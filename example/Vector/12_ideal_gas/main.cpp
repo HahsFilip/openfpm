@@ -14,30 +14,35 @@ template <int dim>
 class ComputationalSpace{
 
     private:
-        using ParticleVector =  vector_dist<dim,double,aggregate<size_t,  double, double, double,Point<dim, double>, double , Point<dim, double>, double, Point<dim, double>>>;
-        enum FIELDS  {
-            PARTICLE_ID = 0,
-            FLUID_MASS = 1,
-            DENSITY = 2,
-            PRESSURE = 3,
-            VELOCITY = 4,
-            DENSITY_OLD = 5,
-            VELOCITY_OLD = 6,
-            D_RHO = 7, 
-            D_V = 8
-        };
+            // static constexpr int dim = 2;
+        using ParticleVector =  vector_dist<dim,double,aggregate<double,  double, double, double,Point<dim, double>, double , Point<dim, double>, double, Point<dim, double>,double>>;
+        // enum FIELDS  {
+            static constexpr int PARTICLE_ID = 0;
+            static constexpr int FLUID_MASS = 1;
+            static constexpr int DENSITY = 2;
+            static constexpr int PRESSURE = 3;
+            static constexpr int VELOCITY = 4;
+            static constexpr int DENSITY_OLD = 5;
+            static constexpr int VELOCITY_OLD = 6;
+            static constexpr int D_RHO = 7; 
+            static constexpr int D_V = 8;
+            static constexpr int REAL_ID = 9;
+
+        // };
    
         double smoothing_distance;
         double extent;
-        const double rho_zero = 1000.0;
-        const double coeff_sound = 20.0;
+        const double rho_zero = 881;
+        const double coeff_sound = 2.0;
         const double gamma_ = 7.0;
-        const double visco = 0.1;
+        const double visco = 0.2;
+        const double p_zero = 10000;
         double Eta2;
+        const double CFL_number = 0.2;
         const double MassFluid = 0.000614125;
         double B;
-
-
+        double dt = 10e-4;
+        double max_visc;
         size_t n;
         Box<dim, double> box;
         Ghost<dim, double> ghost;
@@ -46,10 +51,13 @@ class ComputationalSpace{
 
         void uniform_fill(){
             size_t dom[dim];
+            double dp_tmp[dim]; 
             for(int i = 0; i < dim; ++i){
                 dom[i] = n;
+                dp_tmp[i] =(box.getHigh(i) -box.getLow(i)) /n;
             }
-            auto new_it = DrawParticles::DrawBox(particle_vec, dom, box, box);
+            Box<dim, double> box_2 = box;
+            auto new_it = DrawParticles::DrawBox(particle_vec, dom, box, box_2);
             // auto it =  particle_vec.getGridIterator(dom);
             printf("\n");
 
@@ -63,26 +71,37 @@ class ComputationalSpace{
                 // multiplied by the spacing
 
                 for(int i = 0; i < dim; ++i){
-                    particle_vec.getLastPos()[i] =new_it.get().get(i);//+it.getSpacing(i)*0.05*(float)rand() / RAND_MAX;
-                    printf("%lf ", particle_vec.getLastPos()[i]);
+                    particle_vec.getLastPos()[i] =new_it.get().get(i)+dp_tmp[i]*0.0005*(float)rand() / RAND_MAX;
+                    // printf("%lf ", particle_vec.getLastPos()[i]);
 
                 }   
-                printf("\n");
 
                 // next point
                 ++new_it;
             }
+
             auto it2 = particle_vec.getDomainIterator();
+            double i =0;
             while (it2.isNext()){
                 auto p = it2.get();
                 // printf("random: %f",0.1*(float)rand() / RAND_MAX);
-                particle_vec.template getProp<FIELDS::FLUID_MASS>(p) =MassFluid;   
-                particle_vec.template getProp<FIELDS::DENSITY>(p) = 0.0;
-                particle_vec.template getProp<FIELDS::VELOCITY>(p) = Point<dim, double>(0.0);//+ 0.01*(float)rand() / RAND_MAX;
-                particle_vec.template getProp<FIELDS::DENSITY_OLD>(p) = 0.0;
-                particle_vec.template getProp<FIELDS::VELOCITY_OLD>(p) =Point<dim, double>(0.0);
-                particle_vec.template getProp<FIELDS::D_RHO>(p) = 0.0;
-                particle_vec.template getProp<FIELDS::D_V>(p) = Point<dim, double>(0.0);
+                particle_vec.template getProp<FLUID_MASS>(p) =MassFluid;   
+                particle_vec.template getProp<DENSITY>(p) = 0.0;
+                particle_vec.template getProp<VELOCITY>(p) = Point<dim, double>(0.0);//+ 0.01*(float)rand() / RAND_MAX;
+                particle_vec.template getProp<VELOCITY_OLD>(p) =Point<dim, double>(0.0);
+
+                for(int j = 0; j < dim; j++){
+                    // particle_vec.template getProp<VELOCITY>(p)[j] +=0.001*(float)rand() / RAND_MAX;
+                particle_vec.template getProp<D_V>(p)[j] = 0.0;
+                particle_vec.template getProp<VELOCITY_OLD>(p)[j] = 0.0;
+
+
+                }
+                particle_vec.template getProp<DENSITY_OLD>(p) = 0.0;
+                particle_vec.template getProp<D_RHO>(p) = 0.0;
+                particle_vec.template getProp<REAL_ID>(p) = i;
+                i += 1;
+
                 ++it2;
             }
         }
@@ -95,7 +114,7 @@ class ComputationalSpace{
             if( x <1){
                 kernel_val = 1-1.5*x*x + 0.75*x*x*x;
             }else{
-                if(x >=1 && x <=2){
+                if(x >=1 && x <2){
                     kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
                 }else{
                     kernel_val = 0;
@@ -104,8 +123,9 @@ class ComputationalSpace{
             return multipler*kernel_val;
         }
         Point<dim, double> grad_spline_kernel(Point<dim, double> a, Point<dim, double> b){
-            double r = (a-b).norm();
-            Point<dim, double> direction = (b-a).normalized();
+            Point<dim, double> tmp = b-a;
+            double r = tmp.norm();
+            Point<dim, double> direction = tmp/tmp.norm();
             double x = r/smoothing_distance;
             double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance*smoothing_distance);
             double kernel_val;
@@ -121,33 +141,56 @@ class ComputationalSpace{
 
             return direction*multipler*kernel_val;
         }
+
+        double dot(Point<dim, double> a, Point<dim, double> b){
+            double result = 0;
+            for(int i = 0; i < dim; ++i){
+                result += a[i]*b[i];
+            }
+            return result;
+        }
+
         double StateEquation(double rho){
             return B*(pow(rho/rho_zero, gamma_)-1.0);
         }
         void CalcPressure(){
             particle_vec.map();
-            particle_vec.template ghost_get<FIELDS::PARTICLE_ID,FIELDS::FLUID_MASS,FIELDS::DENSITY,FIELDS::PRESSURE,FIELDS::VELOCITY, FIELDS::DENSITY_OLD, FIELDS::VELOCITY_OLD, FIELDS::D_RHO, FIELDS::D_V>();
+            particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
             auto it = particle_vec.getDomainIterator();
 
-            while(it.isNext()){
+            while(it.isNext()){ 
                 auto a = it.get();
-                double tmp_rho = particle_vec.template getProp<FIELDS::DENSITY>(a);
+                double tmp_rho = particle_vec.template getProp<DENSITY>(a);
 
-                particle_vec.template getProp<FIELDS::PRESSURE>(a) = StateEquation(tmp_rho);
+                particle_vec.template getProp<PRESSURE>(a) = StateEquation(tmp_rho);
                 ++it;
             }
-            particle_vec.template ghost_get<FIELDS::PARTICLE_ID,FIELDS::FLUID_MASS,FIELDS::DENSITY,FIELDS::PRESSURE,FIELDS::VELOCITY, FIELDS::DENSITY_OLD, FIELDS::VELOCITY_OLD, FIELDS::D_RHO, FIELDS::D_V>();
-
-
+            particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
         }
-    
+        double Pi(const Point<dim, double> dr, const Point<dim, double> dv, double rho_a, double rho_b, double mass_b ){
+            double dot_result = dot(dr, dv);
+            double dot_rr2 = dot_result/(dr.norm()+Eta2);
+            max_visc = std::max(dot_rr2, max_visc);
+            if(dot_result < 0){
+                const float amubar=smoothing_distance*dot_rr2;
+                const float robar=(rho_a+rho_b)*0.5f;
+                const double pi_visc=(-visco*coeff_sound*amubar/robar);
+        		return pi_visc;
+            }else{
+                return 0.0;
+            }
+        }
+
+ 
     public: 
     
         ParticleVector particle_vec;
-        ComputationalSpace(double extent, int n_val, double ghost_thickness):extent(extent), n(n_val){
+        ComputationalSpace(double extent, int n_val):extent(extent), n(n_val){
             double zeros[dim];
             double extents[dim];
-            smoothing_distance = sqrt(3.0*(extent/n));
+            printf("dp: %lf",(extent/(double)n_val) );
+            smoothing_distance = sqrt(3.0*(extent/(double)n_val)*(extent/(double)n_val));
+            double ghost_thickness = 2.0*smoothing_distance;
             printf("Smoothing distance: %lf", smoothing_distance);
             for(int i = 0; i < dim; ++i){
                 zeros[i] = 0.0;
@@ -159,62 +202,279 @@ class ComputationalSpace{
             box = Box<dim, double>(zeros,extent); 
             ghost = Ghost<dim, double>(ghost_thickness);
             particle_vec = ParticleVector(0,box, bc, ghost);
+            Eta2 = 0.01*smoothing_distance*smoothing_distance;
             uniform_fill();
-	        openfpm::vector<std::string> names({"ID","MASS","DENSITY","PRESSURE","VELOCITY", "DENSITY_OLD", "VELOCITY_OLD", "D_RHO", "D_V"});
+	        openfpm::vector<std::string> names({"ID","MASS","DENSITY","PRESSURE","VELOCITY", "DENSITY_OLD", "VELOCITY_OLD", "D_RHO", "D_V", "REAL_ID"});
             particle_vec.setPropNames(names);
             CalcDensity();
             CalcPressure();
+            initializeOldFields();
             
         }
 
-        void CalcDensity(){
-            // particle_vec.ghost_get<FIELDS::PARTICLE_ID,FIELDS::FLUID_MASS,FIELDS::DENSITY,FIELDS::VELOCITY, FIELDS::DENSITY_OLD, FIELDS::VELOCITY_OLD, FIELDS::D_RHO, FIELDS::D_V>();
-            particle_vec.template ghost_get<FIELDS::PARTICLE_ID,FIELDS::FLUID_MASS,FIELDS::DENSITY,FIELDS::PRESSURE,FIELDS::VELOCITY, FIELDS::DENSITY_OLD, FIELDS::VELOCITY_OLD, FIELDS::D_RHO, FIELDS::D_V>();
-
-            auto NN = particle_vec.getCellList(10.0*smoothing_distance);
+        void calculate_timestep(){
+            particle_vec.map();
+            particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
             auto it = particle_vec.getDomainIterator();
+            double v_max = 0;
+            double dv_max = 0;
+
+            while(it.isNext()){ 
+                auto a = it.get();
+                Point<dim, double>  tmp_v = particle_vec.template getProp<VELOCITY>(a);
+                Point<dim, double>  tmp_a = particle_vec.template getProp<D_V>(a);
+                if(tmp_v.norm() > v_max){
+                    v_max = tmp_v.norm();
+                }
+                if(tmp_a.norm() > dv_max){
+                    dv_max = tmp_a.norm();
+                }
+                ++it;
+            }
+            Vcluster<> & v_cl = create_vcluster();
+            v_cl.max(v_max);
+            v_cl.max(dv_max);
+            v_cl.max(max_visc);
+            v_cl.execute();
+        	double dt_f = (dv_max)?sqrt(smoothing_distance/dv_max):std::numeric_limits<int>::max();
+        	const double dt_cv = smoothing_distance/(std::max(coeff_sound,dv_max*10.) + smoothing_distance*max_visc);
+
+            std::cout << "V_MAX: " << v_max  << std::endl;
+            std::cout << "max_visc: " << max_visc  << std::endl;
+            std::cout << "dt_f: " << dt_f  << std::endl;
+            std::cout << "dt_cv: " << dt_cv  << std::endl;
+            dt=(CFL_number)*std::min(dt_f,dt_cv);
+            std::cout << "dt: " << dt  << std::endl;
+
+
+        }
+
+        void UpdateOld(){
+                particle_vec.map();
+                particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
+                auto it = particle_vec.getDomainIterator();
+    
+                while(it.isNext()){ 
+                    auto a = it.get();
+                    double tmp_rho = particle_vec.template getProp<DENSITY>(a);
+    
+                    particle_vec.template getProp<VELOCITY_OLD>(a) =  particle_vec.template getProp<VELOCITY>(a);
+                    particle_vec.template getProp<DENSITY_OLD>(a) =  particle_vec.template getProp<DENSITY>(a);
+
+                    ++it;
+                }
+        }
+
+        void CalcForces(){
+            particle_vec.map();
+            particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
+
+            auto NN = particle_vec.getCellList(2.0*smoothing_distance);
+
+            // particle_vec.ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V>();
+            particle_vec.updateCellList(NN);
+
+            auto it = particle_vec.getDomainIterator();
+
             while (it.isNext()){
                 auto p = it.get();
                 auto Np = NN.getNNIteratorBox(NN.getCell(particle_vec.getPos(p)));
-                particle_vec.template getProp<FIELDS::DENSITY>(p) = 0.0;
-        
-                while(Np.isNext()){
+                particle_vec.template getProp<D_V>(p) = particle_vec.template getProp<D_V>(p)*0.0;
+                Point<dim, double> pos_1 = particle_vec.getPos(p);
+
+                Point<dim, double> vel_1 = particle_vec.template getProp<VELOCITY>(p);
+                double rho_1 = particle_vec.template getProp<DENSITY>(p);
+                double p_1 = particle_vec.template getProp<PRESSURE>(p);
+                Point<dim, double> tmp_dv = 0.0;
+                while(Np.isNext()==true){
                     auto np = Np.get();
+
                     if(p.getKey() == np){++Np; continue;}
         
-                    Point<dim, double> pos_1 = particle_vec.getPos(p);
                     Point<dim, double> pos_2 = particle_vec.getPos(np);
-                    Point<dim, double> r = pos_1-pos_2;
-                    // printf("r norm: %lf\n",r.norm());
+                    Point<dim, double> vel_2 = particle_vec.template getProp<VELOCITY>(np);
+                    double rho_2 = particle_vec.template getProp<DENSITY>(np);
+                    double p_2 = particle_vec.template getProp<PRESSURE>(np);
+
+                    Point<dim, double> r = pos_2-pos_1;
+                    Point<dim, double> dvel = vel_2-vel_1;
+        
+                    double local_mass = particle_vec.template getProp<FLUID_MASS>(np);
+                    double pi_val = Pi(r,dvel, rho_1, rho_2, local_mass);
+                    //  tmp_dv =  particle_vec.template getProp<D_V>(p);
+                    Point<dim, double> tmp_diff= local_mass*((p_1+p_2)/(rho_1*rho_2) + pi_val)*grad_spline_kernel(pos_1, pos_2);
+                    // if(tmp_diff.norm() >100){
+                    //     std::cout <<"tmp_diff: " <<  tmp_diff.norm() <<std::endl;
+                    // }
+
+                    for(int i = 0; i<dim;++i){
+                        particle_vec.template getProp<D_V>(p)[i] -=  tmp_diff[i];
+                    } 
+                    // particle_vec.template getProp<D_V>(p) -=  local_mass*((p_1+p_2)/(rho_1*rho_2))*grad_spline_kernel(pos_1, pos_2);
+                    ++Np;
+
+                }
+                Point<dim, double> tmp_dv_outer =  particle_vec.template getProp<D_V>(p);
+                // std::cout <<  tmp_dv_outer <<std::endl;
+                // std::cout <<"tmp_dv: " <<  tmp_dv.norm() <<std::endl;
+        
+                ++it;
+            }
+            particle_vec.map();
+        }
+
+// Add this function inside your ComputationalSpace class.
+    void initializeOldFields() {
+        // Ensure the initial density derivative and forces have been computed.
+        CalcDRho();
+        CalcForces();
+        
+        auto it = particle_vec.getDomainIterator();
+        while (it.isNext()) {
+            auto p = it.get();
+            // "Back-step" the velocity and density
+            particle_vec.template getProp<VELOCITY_OLD>(p) =
+                particle_vec.template getProp<VELOCITY>(p) - dt * particle_vec.template getProp<D_V>(p);
+            particle_vec.template getProp<DENSITY_OLD>(p) =
+                particle_vec.template getProp<DENSITY>(p) - dt * particle_vec.template getProp<D_RHO>(p);
+            ++it;
+        }
+    }
+
+        void CalcDensity(){
+
+            particle_vec.map();
+            particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
+
+            auto NN = particle_vec.getCellList(2.0*smoothing_distance);
+
+            // particle_vec.ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V>();
+            particle_vec.updateCellList(NN);
+
+            auto it = particle_vec.getDomainIterator();
+
+            while (it.isNext()){
+                auto p = it.get();
+                auto Np = NN.getNNIteratorBox(NN.getCell(particle_vec.getPos(p)));
+                particle_vec.template getProp<DENSITY>(p) = 0.0;
+                Point<dim, double> pos_1 = particle_vec.getPos(p);
+        
+                while(Np.isNext()==true){
+                    auto np = Np.get();
+
+                    if(p.getKey() == np){++Np; continue;}
+        
+                    Point<dim, double> pos_2 = particle_vec.getPos(np);
+                    Point<dim, double> r = pos_2-pos_1;
                     if(r.norm()< 10e-10){
                         ++Np;
                         continue;
                     }
-                    double local_mass = particle_vec.template getProp<FIELDS::FLUID_MASS>(np);
-                    particle_vec.template getProp<FIELDS::DENSITY>(p) +=  local_mass*spline_kernel(pos_1, pos_2);
+                    double local_mass = particle_vec.template getProp<FLUID_MASS>(np);
+                    particle_vec.template getProp<DENSITY>(p) +=  local_mass*spline_kernel(pos_1, pos_2);
                     ++Np;
                 }
-                // printf("density end: %lf\n",vec.getProp<FIELDS::DENSITY>(p));
         
                 ++it;
             }
-            particle_vec.template ghost_get<FIELDS::PARTICLE_ID,FIELDS::FLUID_MASS,FIELDS::DENSITY,FIELDS::PRESSURE,FIELDS::VELOCITY, FIELDS::DENSITY_OLD, FIELDS::VELOCITY_OLD, FIELDS::D_RHO, FIELDS::D_V>();
+            particle_vec.map();
+            // particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
         
         }
 
+        void CalcDRho(){
+            particle_vec.map();
+            particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
 
+            auto NN = particle_vec.getCellList(2.0*smoothing_distance);
+
+            // particle_vec.ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V>();
+            particle_vec.updateCellList(NN);
+
+            auto it = particle_vec.getDomainIterator();
+
+            while (it.isNext()){
+                auto p = it.get();
+                auto Np = NN.getNNIteratorBox(NN.getCell(particle_vec.getPos(p)));
+                particle_vec.template getProp<D_RHO>(p) = particle_vec.template getProp<D_RHO>(p)*0.0;
+
+                Point<dim, double> pos_1 = particle_vec.getPos(p);
+                Point<dim, double> vel_1 = particle_vec.template getProp<VELOCITY>(p);
+                
+                while(Np.isNext()==true){
+                    auto np = Np.get();
+
+                    if(p.getKey() == np){++Np; continue;}
+        
+                    Point<dim, double> pos_2 = particle_vec.getPos(np);
+                    Point<dim, double> vel_2 = particle_vec.template getProp<VELOCITY>(np);
+                    Point<dim, double> rel_vel = vel_2-vel_1;
+                    double local_mass = particle_vec.template getProp<FLUID_MASS>(np);
+
+                    particle_vec.template getProp<D_RHO>(p) -=  local_mass*dot(grad_spline_kernel(pos_1, pos_2), rel_vel);
+                    ++Np;
+                }
+        
+                ++it;
+            }
+        }
+        void VerletTime(int n){
+
+            for(int i = 0; i<n; ++i){
+                particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
+
+                particle_vec.map();
+                std::cout << "TIMESTEP: " << i << std::endl;
+                max_visc = 0.0;
+                WriteParticles(i);
+                CalcDRho();
+                CalcPressure();
+                CalcForces();
+                calculate_timestep();
+                auto it = particle_vec.getDomainIterator();
+    
+                while(it.isNext()){ 
+                    auto a = it.get();
+                    Point<dim, double> v_plus_one = particle_vec.template getProp<VELOCITY_OLD>(a) + 2.0*dt*particle_vec.template getProp<D_V>(a); 
+                    Point<dim, double> r_plus_1 = particle_vec.getPos(a);
+                    r_plus_1 += dt*particle_vec.template getProp<VELOCITY>(a) + 0.5*dt*dt*particle_vec.template getProp<D_V>(a);
+
+                    for(int j = 0; j< dim; ++j){
+                        particle_vec.getPos(a)[j] = r_plus_1[j]; 
+                    }
+                    double rho_plus_one = particle_vec.template getProp<DENSITY_OLD>(a) + 2.0*dt*particle_vec.template getProp<D_RHO>(a);
+                    particle_vec.template getProp<DENSITY_OLD>(a) = particle_vec.template getProp<DENSITY>(a);
+                    particle_vec.template getProp<VELOCITY_OLD>(a) = particle_vec.template getProp<VELOCITY>(a);
+                    particle_vec.template getProp<VELOCITY>(a) = v_plus_one;
+                    particle_vec.template getProp<DENSITY>(a) = rho_plus_one;
+
+                    // double tmp_rho = particle_vec.template getProp<DENSITY>(a);
+    
+                    // particle_vec.template getProp<VELOCITY_OLD>(a) =  particle_vec.template getProp<VELOCITY>(a);
+                    // particle_vec.template getProp<DENSITY_OLD>(a) =  particle_vec.template getProp<DENSITY>(a);
+
+                    ++it;
+                }
+                particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
+                particle_vec.map();
+
+
+            }
+        
+        }
 
 
         
 
         void WriteParticles(int i){
-        
-            // particle_vec.template ghost_get<FIELDS::PARTICLE_ID,FIELDS::FLUID_MASS,FIELDS::DENSITY,FIELDS::PRESSURE,FIELDS::VELOCITY, FIELDS::DENSITY_OLD, FIELDS::VELOCITY_OLD, FIELDS::D_RHO, FIELDS::D_V>();
-            // particle_vec.template ghost_get<FIELDS::PARTICLE_ID,FIELDS::FLUID_MASS,FIELDS::DENSITY,FIELDS::PRESSURE,FIELDS::VELOCITY, FIELDS::DENSITY_OLD, FIELDS::VELOCITY_OLD, FIELDS::D_RHO, FIELDS::D_V>();
+            particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
+            particle_vec.map();
+            // particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
+            // particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
 
-            // particle_vec.map();k
-            printf("Smoothing distance: %lf", smoothing_distance);
-            particle_vec.template write("particles", BINARY);
+            // particle_vec.map();
+            particle_vec.write_frame("particles", i);
+
         }
 
 };
@@ -224,12 +484,14 @@ int main(int argc, char *argv[]){
     openfpm_init(&argc,&argv);
     const double dp = 0.0085;
 
-    // ComputationalSpace<1> test(1, 10, 2); 
-    // ComputationalSpace<2> test_2(0.085*0.5, 0.085*0.5/dp, 2*dp); 
-    ComputationalSpace<1> test_2(1, 1000, 0.2); 
-    
+        // ComputationalSpace<1> test(1, 10, 2); 
+    ComputationalSpace<3> test_2(0.0085*50, 50); 
+    // ComputationalSpace<2> test_2(1, 100); 
+    // test_2.CalcDRho();
+    // test_2.CalcForces();
     // test_2.CalcDensity();
     test_2.WriteParticles(0);
+    test_2.VerletTime(2000);
 	openfpm_finalize();
 
     return 0;
