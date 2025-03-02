@@ -29,12 +29,21 @@ class ComputationalSpace{
             static constexpr int REAL_ID = 9;
 
         // };
-   
+        constexpr double normalization() const {
+            if constexpr(dim == 1)
+                return 2.0/3.0;
+            else if constexpr(dim == 2)
+                return 10.0 / (7.0 * M_PI);
+            else if constexpr(dim == 3)
+                return 1.0 / (1.0*M_PI);
+            else
+                return 1.0;  // Fallback (this may not be correct for higher dimensions)
+        }
         double smoothing_distance;
         double extent;
-        const double rho_zero = 881;
+        const double rho_zero = 9;
         const double coeff_sound = 2.0;
-        const double gamma_ = 7.0;
+        const double gamma_ = 1.0;
         const double visco = 0.2;
         const double p_zero = 10000;
         double Eta2;
@@ -71,7 +80,7 @@ class ComputationalSpace{
                 // multiplied by the spacing
 
                 for(int i = 0; i < dim; ++i){
-                    particle_vec.getLastPos()[i] =new_it.get().get(i)+dp_tmp[i]*0.0005*(float)rand() / RAND_MAX;
+                    particle_vec.getLastPos()[i] =new_it.get().get(i)+dp_tmp[i]*0.05*(float)rand() / RAND_MAX;
                     // printf("%lf ", particle_vec.getLastPos()[i]);
 
                 }   
@@ -105,6 +114,90 @@ class ComputationalSpace{
                 ++it2;
             }
         }
+        // double spline_kernel(Point<dim, double> a, Point<dim, double> b){
+        //     Point<dim, double> r_diff = b-a;
+        //     double r = r_diff.norm();
+        //     double x = r/smoothing_distance;
+        //     // double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
+        //     double multiplier = normalization() / std::pow(smoothing_distance, dim);
+        //     double kernel_val;
+
+        //     if( x <1){
+        //         kernel_val = 1.0-1.5*x*x + 0.75*x*x*x;
+        //     }else{
+        //         if(x >=1 && x <2){
+        //             kernel_val = (1.0/4.0)*(2.0-x)*(2.0-x)*(2.0-x);
+        //         }else{
+        //             kernel_val = 0;
+        //         }
+        //     }
+        //     // if( x <1){
+        //     //     kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+        //     // }else{
+        //     //     if(x >=1 && x <2){
+        //     //         kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+        //     //     }else{
+        //     //         kernel_val = 0;
+        //     //     }
+        //     // }          
+        //     // if( x <1){
+        //     //     kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+        //     // }else{
+        //     //     if(x >=1 && x <2){
+        //     //         kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+        //     //     }else{
+        //     //         kernel_val = 0;
+        //     //     }
+        //     // }
+        //     return multiplier*kernel_val;
+        // }
+
+        // double spline_kernel(double r){
+        //     double x = r/smoothing_distance;
+        //     double multiplier = normalization() / std::pow(smoothing_distance, dim);
+        //     // double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
+        //     double kernel_val;
+        //     // if( x <1){
+        //     //     kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+        //     // }else{
+        //     //     if(x >=1 && x <2){
+        //     //         kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+        //     //     }else{
+        //     //         kernel_val = 0;
+        //     //     }
+        //     // }
+        //     if( x <1){
+        //         kernel_val = 1.0-1.5*x*x + 0.75*x*x*x;
+        //     }else{
+        //         if(x >=1 && x <2){
+        //             kernel_val = (1.0/4.0)*(2.0-x)*(2.0-x)*(2.0-x);
+        //         }else{
+        //             kernel_val = 0;
+        //         }
+        //     }
+        //     return multiplier*kernel_val;
+        // }
+
+        // Point<dim, double> grad_spline_kernel(Point<dim, double> a, Point<dim, double> b){
+        //     Point<dim, double> tmp = b-a;
+        //     double r = tmp.norm();
+        //     Point<dim, double> direction = tmp/tmp.norm();
+        //     double x = r/smoothing_distance;
+        //     // double multipler = 1.0/(M_PI*smothing_distance*smoothing_distance*smoothing_distance*smoothing_distance);
+        //     double multiplier = normalization() / std::pow(smoothing_distance, dim + 1);
+        //     double kernel_val;
+        //     if(x>=0 && x <=1){
+        //         kernel_val = (9.0/4.0)*x*x -3.0*x;
+        //     }else{
+        //         if(x >=1 && x <=2){
+        //             kernel_val = -(3.0/4.0)*(2.0-x)*(2.0-x);
+        //         }else{
+        //             kernel_val = 0;
+        //         }
+        //     }
+
+        //     return direction*multiplier*kernel_val;
+        // }
         double spline_kernel(Point<dim, double> a, Point<dim, double> b){
             Point<dim, double> r_diff = b-a;
             double r = r_diff.norm();
@@ -122,6 +215,23 @@ class ComputationalSpace{
             }
             return multipler*kernel_val;
         }
+
+        double spline_kernel(double r){
+            double x = r/smoothing_distance;
+            double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
+            double kernel_val;
+            if( x <1){
+                kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+            }else{
+                if(x >=1 && x <2){
+                    kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+                }else{
+                    kernel_val = 0;
+                }
+            }
+            return multipler*kernel_val;
+        }
+
         Point<dim, double> grad_spline_kernel(Point<dim, double> a, Point<dim, double> b){
             Point<dim, double> tmp = b-a;
             double r = tmp.norm();
@@ -141,7 +251,6 @@ class ComputationalSpace{
 
             return direction*multipler*kernel_val;
         }
-
         double dot(Point<dim, double> a, Point<dim, double> b){
             double result = 0;
             for(int i = 0; i < dim; ++i){
@@ -248,7 +357,40 @@ class ComputationalSpace{
 
 
         }
+        double Tensile(double r, double rhoa, double rhob, double prs1, double prs2)
+        {
+            const double qq=r/smoothing_distance;
+            //-Cubic Spline kernel
+            double wab;
+            const double W_dap = 1.0/spline_kernel(smoothing_distance/1.5);
+            const double a2 = 1.0/M_PI/smoothing_distance/smoothing_distance/smoothing_distance;
+            const double a2_4 = 0.25*a2;
 
+
+            if(r>smoothing_distance)
+            {
+                double wqq1=2.0f-qq;
+                double wqq2=wqq1*wqq1;
+        
+                wab=a2_4*(wqq2*wqq1);
+            }
+            else
+            {
+                double wqq2=qq*qq;
+                double wqq3=wqq2*qq;
+        
+                wab=a2*(1.0f-1.5f*wqq2+0.75f*wqq3);
+            }
+        
+            //-Tensile correction.
+            double fab=wab*W_dap;
+            fab*=fab; fab*=fab; //fab=fab^4
+            const double tensilp1=(prs1/(rhoa*rhoa))*(prs1>0? 0.01: -0.2);
+            const double tensilp2=(prs2/(rhob*rhob))*(prs2>0? 0.01: -0.2);
+        
+            return (fab*(tensilp1+tensilp2));
+        }
+        
         void UpdateOld(){
                 particle_vec.map();
                 particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
@@ -296,25 +438,25 @@ class ComputationalSpace{
                     double rho_2 = particle_vec.template getProp<DENSITY>(np);
                     double p_2 = particle_vec.template getProp<PRESSURE>(np);
 
-                    Point<dim, double> r = pos_2-pos_1;
-                    Point<dim, double> dvel = vel_2-vel_1;
+                    Point<dim, double> r = pos_1-pos_2;
+                    Point<dim, double> dvel = vel_1-vel_2;
         
                     double local_mass = particle_vec.template getProp<FLUID_MASS>(np);
                     double pi_val = Pi(r,dvel, rho_1, rho_2, local_mass);
                     //  tmp_dv =  particle_vec.template getProp<D_V>(p);
-                    Point<dim, double> tmp_diff= local_mass*((p_1+p_2)/(rho_1*rho_2) + pi_val)*grad_spline_kernel(pos_1, pos_2);
+                    double tensile_val = Tensile(r.norm(),rho_1,rho_2,p_1,p_2);
+                    Point<dim, double> tmp_diff= local_mass*((p_1+p_2)/(rho_1*rho_2) + pi_val+tensile_val)*grad_spline_kernel(pos_1, pos_2);
                     // if(tmp_diff.norm() >100){
                     //     std::cout <<"tmp_diff: " <<  tmp_diff.norm() <<std::endl;
                     // }
 
                     for(int i = 0; i<dim;++i){
-                        particle_vec.template getProp<D_V>(p)[i] -=  tmp_diff[i];
+                        particle_vec.template getProp<D_V>(p)[i] +=  tmp_diff[i];
                     } 
                     // particle_vec.template getProp<D_V>(p) -=  local_mass*((p_1+p_2)/(rho_1*rho_2))*grad_spline_kernel(pos_1, pos_2);
                     ++Np;
 
                 }
-                Point<dim, double> tmp_dv_outer =  particle_vec.template getProp<D_V>(p);
                 // std::cout <<  tmp_dv_outer <<std::endl;
                 // std::cout <<"tmp_dv: " <<  tmp_dv.norm() <<std::endl;
         
@@ -366,10 +508,7 @@ class ComputationalSpace{
         
                     Point<dim, double> pos_2 = particle_vec.getPos(np);
                     Point<dim, double> r = pos_2-pos_1;
-                    if(r.norm()< 10e-10){
-                        ++Np;
-                        continue;
-                    }
+           
                     double local_mass = particle_vec.template getProp<FLUID_MASS>(np);
                     particle_vec.template getProp<DENSITY>(p) +=  local_mass*spline_kernel(pos_1, pos_2);
                     ++Np;
@@ -408,10 +547,10 @@ class ComputationalSpace{
         
                     Point<dim, double> pos_2 = particle_vec.getPos(np);
                     Point<dim, double> vel_2 = particle_vec.template getProp<VELOCITY>(np);
-                    Point<dim, double> rel_vel = vel_2-vel_1;
+                    Point<dim, double> rel_vel = vel_1-vel_2;
                     double local_mass = particle_vec.template getProp<FLUID_MASS>(np);
 
-                    particle_vec.template getProp<D_RHO>(p) -=  local_mass*dot(grad_spline_kernel(pos_1, pos_2), rel_vel);
+                    particle_vec.template getProp<D_RHO>(p) +=  local_mass*dot(grad_spline_kernel(pos_2, pos_1), rel_vel);
                     ++Np;
                 }
         
@@ -425,8 +564,10 @@ class ComputationalSpace{
 
                 particle_vec.map();
                 std::cout << "TIMESTEP: " << i << std::endl;
-                max_visc = 0.0;
-                WriteParticles(i);
+                max_visc = 0.0;\
+                if(i%1== 0){
+                    WriteParticles(i);
+                }
                 CalcDRho();
                 CalcPressure();
                 CalcForces();
@@ -485,13 +626,13 @@ int main(int argc, char *argv[]){
     const double dp = 0.0085;
 
         // ComputationalSpace<1> test(1, 10, 2); 
-    ComputationalSpace<3> test_2(0.0085*50, 50); 
+    ComputationalSpace<2> test_2(0.0085*50, 50); 
     // ComputationalSpace<2> test_2(1, 100); 
     // test_2.CalcDRho();
     // test_2.CalcForces();
     // test_2.CalcDensity();
     test_2.WriteParticles(0);
-    test_2.VerletTime(2000);
+    test_2.VerletTime(50000);
 	openfpm_finalize();
 
     return 0;
