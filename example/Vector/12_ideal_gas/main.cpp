@@ -41,10 +41,10 @@ class ComputationalSpace{
         }
         double smoothing_distance;
         double extent;
-        const double rho_zero = 9;
+        const double rho_zero = 6.5;
         const double coeff_sound = 2.0;
         const double gamma_ = 1.0;
-        const double visco = 0.2;
+        const double visco =0.9;
         const double p_zero = 10000;
         double Eta2;
         const double CFL_number = 0.2;
@@ -114,122 +114,68 @@ class ComputationalSpace{
                 ++it2;
             }
         }
-        // double spline_kernel(Point<dim, double> a, Point<dim, double> b){
-        //     Point<dim, double> r_diff = b-a;
-        //     double r = r_diff.norm();
-        //     double x = r/smoothing_distance;
-        //     // double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
-        //     double multiplier = normalization() / std::pow(smoothing_distance, dim);
-        //     double kernel_val;
-
-        //     if( x <1){
-        //         kernel_val = 1.0-1.5*x*x + 0.75*x*x*x;
-        //     }else{
-        //         if(x >=1 && x <2){
-        //             kernel_val = (1.0/4.0)*(2.0-x)*(2.0-x)*(2.0-x);
-        //         }else{
-        //             kernel_val = 0;
-        //         }
-        //     }
-        //     // if( x <1){
-        //     //     kernel_val = 1-1.5*x*x + 0.75*x*x*x;
-        //     // }else{
-        //     //     if(x >=1 && x <2){
-        //     //         kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
-        //     //     }else{
-        //     //         kernel_val = 0;
-        //     //     }
-        //     // }          
-        //     // if( x <1){
-        //     //     kernel_val = 1-1.5*x*x + 0.75*x*x*x;
-        //     // }else{
-        //     //     if(x >=1 && x <2){
-        //     //         kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
-        //     //     }else{
-        //     //         kernel_val = 0;
-        //     //     }
-        //     // }
-        //     return multiplier*kernel_val;
-        // }
-
-        // double spline_kernel(double r){
-        //     double x = r/smoothing_distance;
-        //     double multiplier = normalization() / std::pow(smoothing_distance, dim);
-        //     // double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
-        //     double kernel_val;
-        //     // if( x <1){
-        //     //     kernel_val = 1-1.5*x*x + 0.75*x*x*x;
-        //     // }else{
-        //     //     if(x >=1 && x <2){
-        //     //         kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
-        //     //     }else{
-        //     //         kernel_val = 0;
-        //     //     }
-        //     // }
-        //     if( x <1){
-        //         kernel_val = 1.0-1.5*x*x + 0.75*x*x*x;
-        //     }else{
-        //         if(x >=1 && x <2){
-        //             kernel_val = (1.0/4.0)*(2.0-x)*(2.0-x)*(2.0-x);
-        //         }else{
-        //             kernel_val = 0;
-        //         }
-        //     }
-        //     return multiplier*kernel_val;
-        // }
-
-        // Point<dim, double> grad_spline_kernel(Point<dim, double> a, Point<dim, double> b){
-        //     Point<dim, double> tmp = b-a;
-        //     double r = tmp.norm();
-        //     Point<dim, double> direction = tmp/tmp.norm();
-        //     double x = r/smoothing_distance;
-        //     // double multipler = 1.0/(M_PI*smothing_distance*smoothing_distance*smoothing_distance*smoothing_distance);
-        //     double multiplier = normalization() / std::pow(smoothing_distance, dim + 1);
-        //     double kernel_val;
-        //     if(x>=0 && x <=1){
-        //         kernel_val = (9.0/4.0)*x*x -3.0*x;
-        //     }else{
-        //         if(x >=1 && x <=2){
-        //             kernel_val = -(3.0/4.0)*(2.0-x)*(2.0-x);
-        //         }else{
-        //             kernel_val = 0;
-        //         }
-        //     }
-
-        //     return direction*multiplier*kernel_val;
-        // }
         double spline_kernel(Point<dim, double> a, Point<dim, double> b){
             Point<dim, double> r_diff = b-a;
             double r = r_diff.norm();
             double x = r/smoothing_distance;
-            double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
+            // double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
+            double multiplier = normalization() / std::pow(smoothing_distance, dim);
             double kernel_val;
+
             if( x <1){
-                kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+                kernel_val = 1.0-1.5*x*x + 0.75*x*x*x;
             }else{
                 if(x >=1 && x <2){
-                    kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+                    kernel_val = (1.0/4.0)*(2.0-x)*(2.0-x)*(2.0-x);
                 }else{
                     kernel_val = 0;
                 }
             }
-            return multipler*kernel_val;
+            // if( x <1){
+            //     kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+            // }else{
+            //     if(x >=1 && x <2){
+            //         kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+            //     }else{
+            //         kernel_val = 0;
+            //     }
+            // }          
+            // if( x <1){
+            //     kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+            // }else{
+            //     if(x >=1 && x <2){
+            //         kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+            //     }else{
+            //         kernel_val = 0;
+            //     }
+            // }
+            return multiplier*kernel_val;
         }
 
         double spline_kernel(double r){
             double x = r/smoothing_distance;
-            double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
+            double multiplier = normalization() / std::pow(smoothing_distance, dim);
+            // double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
             double kernel_val;
+            // if( x <1){
+            //     kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+            // }else{
+            //     if(x >=1 && x <2){
+            //         kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+            //     }else{
+            //         kernel_val = 0;
+            //     }
+            // }
             if( x <1){
-                kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+                kernel_val = 1.0-1.5*x*x + 0.75*x*x*x;
             }else{
                 if(x >=1 && x <2){
-                    kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+                    kernel_val = (1.0/4.0)*(2.0-x)*(2.0-x)*(2.0-x);
                 }else{
                     kernel_val = 0;
                 }
             }
-            return multipler*kernel_val;
+            return multiplier*kernel_val;
         }
 
         Point<dim, double> grad_spline_kernel(Point<dim, double> a, Point<dim, double> b){
@@ -237,20 +183,74 @@ class ComputationalSpace{
             double r = tmp.norm();
             Point<dim, double> direction = tmp/tmp.norm();
             double x = r/smoothing_distance;
-            double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance*smoothing_distance);
+            // double multipler = 1.0/(M_PI*smothing_distance*smoothing_distance*smoothing_distance*smoothing_distance);
+            double multiplier = normalization() / std::pow(smoothing_distance, dim + 1);
             double kernel_val;
             if(x>=0 && x <=1){
                 kernel_val = (9.0/4.0)*x*x -3.0*x;
             }else{
                 if(x >=1 && x <=2){
-                    kernel_val = -0.75*(2.0-x)*(2.0-x);
+                    kernel_val = -(3.0/4.0)*(2.0-x)*(2.0-x);
                 }else{
                     kernel_val = 0;
                 }
             }
 
-            return direction*multipler*kernel_val;
+            return direction*multiplier*kernel_val;
         }
+        // double spline_kernel(Point<dim, double> a, Point<dim, double> b){
+        //     Point<dim, double> r_diff = b-a;
+        //     double r = r_diff.norm();
+        //     double x = r/smoothing_distance;
+        //     double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
+        //     double kernel_val;
+        //     if( x <1){
+        //         kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+        //     }else{
+        //         if(x >=1 && x <2){
+        //             kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+        //         }else{
+        //             kernel_val = 0;
+        //         }
+        //     }
+        //     return multipler*kernel_val;
+        // }
+
+        // double spline_kernel(double r){
+        //     double x = r/smoothing_distance;
+        //     double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance);
+        //     double kernel_val;
+        //     if( x <1){
+        //         kernel_val = 1-1.5*x*x + 0.75*x*x*x;
+        //     }else{
+        //         if(x >=1 && x <2){
+        //             kernel_val = 0.25*(2.0-x)*(2.0-x)*(2.0-x);
+        //         }else{
+        //             kernel_val = 0;
+        //         }
+        //     }
+        //     return multipler*kernel_val;
+        // }
+
+        // Point<dim, double> grad_spline_kernel(Point<dim, double> a, Point<dim, double> b){
+        //     Point<dim, double> tmp = b-a;
+        //     double r = tmp.norm();
+        //     Point<dim, double> direction = tmp/tmp.norm();
+        //     double x = r/smoothing_distance;
+        //     double multipler = 1.0/(M_PI*smoothing_distance*smoothing_distance*smoothing_distance*smoothing_distance);
+        //     double kernel_val;
+        //     if(x>=0 && x <=1){
+        //         kernel_val = (9.0/4.0)*x*x -3.0*x;
+        //     }else{
+        //         if(x >=1 && x <=2){
+        //             kernel_val = -0.75*(2.0-x)*(2.0-x);
+        //         }else{
+        //             kernel_val = 0;
+        //         }
+        //     }
+
+        //     return direction*multipler*kernel_val;
+        // }
         double dot(Point<dim, double> a, Point<dim, double> b){
             double result = 0;
             for(int i = 0; i < dim; ++i){
@@ -363,7 +363,8 @@ class ComputationalSpace{
             //-Cubic Spline kernel
             double wab;
             const double W_dap = 1.0/spline_kernel(smoothing_distance/1.5);
-            const double a2 = 1.0/M_PI/smoothing_distance/smoothing_distance/smoothing_distance;
+            //  1.0/M_PI/smoothing_distance/smoothing_distance/smoothing_distance;
+             const double a2 = normalization() / std::pow(smoothing_distance, dim);
             const double a2_4 = 0.25*a2;
 
 
@@ -421,7 +422,9 @@ class ComputationalSpace{
             while (it.isNext()){
                 auto p = it.get();
                 auto Np = NN.getNNIteratorBox(NN.getCell(particle_vec.getPos(p)));
-                particle_vec.template getProp<D_V>(p) = particle_vec.template getProp<D_V>(p)*0.0;
+                for(int i = 0; i< dim; ++i){
+                    particle_vec.template getProp<D_V>(p) = particle_vec.template getProp<D_V>(p)*0.0;
+                }
                 Point<dim, double> pos_1 = particle_vec.getPos(p);
 
                 Point<dim, double> vel_1 = particle_vec.template getProp<VELOCITY>(p);
@@ -445,7 +448,7 @@ class ComputationalSpace{
                     double pi_val = Pi(r,dvel, rho_1, rho_2, local_mass);
                     //  tmp_dv =  particle_vec.template getProp<D_V>(p);
                     double tensile_val = Tensile(r.norm(),rho_1,rho_2,p_1,p_2);
-                    Point<dim, double> tmp_diff= local_mass*((p_1+p_2)/(rho_1*rho_2) + pi_val+tensile_val)*grad_spline_kernel(pos_1, pos_2);
+                    Point<dim, double> tmp_diff = local_mass*((p_1+p_2)/(rho_1*rho_2)+pi_val +tensile_val)*grad_spline_kernel(pos_1, pos_2);
                     // if(tmp_diff.norm() >100){
                     //     std::cout <<"tmp_diff: " <<  tmp_diff.norm() <<std::endl;
                     // }
@@ -535,7 +538,7 @@ class ComputationalSpace{
             while (it.isNext()){
                 auto p = it.get();
                 auto Np = NN.getNNIteratorBox(NN.getCell(particle_vec.getPos(p)));
-                particle_vec.template getProp<D_RHO>(p) = particle_vec.template getProp<D_RHO>(p)*0.0;
+                particle_vec.template getProp<D_RHO>(p) = 0.0;
 
                 Point<dim, double> pos_1 = particle_vec.getPos(p);
                 Point<dim, double> vel_1 = particle_vec.template getProp<VELOCITY>(p);
@@ -563,38 +566,72 @@ class ComputationalSpace{
                 particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
 
                 particle_vec.map();
-                std::cout << "TIMESTEP: " << i << std::endl;
-                max_visc = 0.0;\
-                if(i%1== 0){
+                max_visc = 0.0;
+                if(i%10== 0){
                     WriteParticles(i);
                 }
-                CalcDRho();
-                CalcPressure();
-                CalcForces();
-                calculate_timestep();
-                auto it = particle_vec.getDomainIterator();
-    
-                while(it.isNext()){ 
-                    auto a = it.get();
-                    Point<dim, double> v_plus_one = particle_vec.template getProp<VELOCITY_OLD>(a) + 2.0*dt*particle_vec.template getProp<D_V>(a); 
-                    Point<dim, double> r_plus_1 = particle_vec.getPos(a);
-                    r_plus_1 += dt*particle_vec.template getProp<VELOCITY>(a) + 0.5*dt*dt*particle_vec.template getProp<D_V>(a);
+                if(i%40 == 0){
+                    std::cout << "TIMESTEP: " << i << std::endl;
 
-                    for(int j = 0; j< dim; ++j){
-                        particle_vec.getPos(a)[j] = r_plus_1[j]; 
+                    CalcDensity();
+                    CalcDRho();
+                    CalcPressure();
+                    CalcForces();
+                    calculate_timestep();
+                    auto it = particle_vec.getDomainIterator();
+        
+                    while(it.isNext()){ 
+                        auto a = it.get();
+                        Point<dim, double> v_plus_one = particle_vec.template getProp<VELOCITY>(a) + dt*particle_vec.template getProp<D_V>(a); 
+                        Point<dim, double> r_plus_1 = particle_vec.getPos(a);
+                        r_plus_1 += dt*particle_vec.template getProp<VELOCITY>(a) + 0.5*dt*dt*particle_vec.template getProp<D_V>(a);
+
+                        for(int j = 0; j< dim; ++j){
+                            particle_vec.getPos(a)[j] = r_plus_1[j]; 
+                        }
+                        double rho_plus_one = particle_vec.template getProp<DENSITY>(a) + 1.0*dt*particle_vec.template getProp<D_RHO>(a);
+                        particle_vec.template getProp<DENSITY_OLD>(a) = particle_vec.template getProp<DENSITY>(a);
+                        particle_vec.template getProp<VELOCITY_OLD>(a) = particle_vec.template getProp<VELOCITY>(a);
+                        particle_vec.template getProp<VELOCITY>(a) = v_plus_one;
+                        particle_vec.template getProp<DENSITY>(a) = rho_plus_one;
+
+                        // double tmp_rho = particle_vec.template getProp<DENSITY>(a);
+        
+                        // particle_vec.template getProp<VELOCITY_OLD>(a) =  particle_vec.template getProp<VELOCITY>(a);
+                        // particle_vec.template getProp<DENSITY_OLD>(a) =  particle_vec.template getProp<DENSITY>(a);
+
+                        ++it;
                     }
-                    double rho_plus_one = particle_vec.template getProp<DENSITY_OLD>(a) + 2.0*dt*particle_vec.template getProp<D_RHO>(a);
-                    particle_vec.template getProp<DENSITY_OLD>(a) = particle_vec.template getProp<DENSITY>(a);
-                    particle_vec.template getProp<VELOCITY_OLD>(a) = particle_vec.template getProp<VELOCITY>(a);
-                    particle_vec.template getProp<VELOCITY>(a) = v_plus_one;
-                    particle_vec.template getProp<DENSITY>(a) = rho_plus_one;
+                }else{
+                    CalcDRho();
+                    CalcPressure();
+                    CalcForces();
+                    calculate_timestep();
 
-                    // double tmp_rho = particle_vec.template getProp<DENSITY>(a);
-    
-                    // particle_vec.template getProp<VELOCITY_OLD>(a) =  particle_vec.template getProp<VELOCITY>(a);
-                    // particle_vec.template getProp<DENSITY_OLD>(a) =  particle_vec.template getProp<DENSITY>(a);
+                    auto it = particle_vec.getDomainIterator();
+        
+                    while(it.isNext()){ 
+                        auto a = it.get();
+                        Point<dim, double> v_plus_one = particle_vec.template getProp<VELOCITY_OLD>(a) + 2.0*dt*particle_vec.template getProp<D_V>(a); 
+                        Point<dim, double> r_plus_1 = particle_vec.getPos(a);
+                        r_plus_1 += dt*particle_vec.template getProp<VELOCITY>(a) + 0.5*dt*dt*particle_vec.template getProp<D_V>(a);
 
-                    ++it;
+                        for(int j = 0; j< dim; ++j){
+                            particle_vec.getPos(a)[j] = r_plus_1[j]; 
+                        }
+                        double rho_plus_one = particle_vec.template getProp<DENSITY_OLD>(a) + 2.0*dt*particle_vec.template getProp<D_RHO>(a);
+                        particle_vec.template getProp<DENSITY_OLD>(a) = particle_vec.template getProp<DENSITY>(a);
+                        particle_vec.template getProp<VELOCITY_OLD>(a) = particle_vec.template getProp<VELOCITY>(a);
+                        particle_vec.template getProp<VELOCITY>(a) = v_plus_one;
+                        particle_vec.template getProp<DENSITY>(a) = rho_plus_one;
+
+                        // double tmp_rho = particle_vec.template getProp<DENSITY>(a);
+        
+                        // particle_vec.template getProp<VELOCITY_OLD>(a) =  particle_vec.template getProp<VELOCITY>(a);
+                        // particle_vec.template getProp<DENSITY_OLD>(a) =  particle_vec.template getProp<DENSITY>(a);
+
+                        ++it;
+                    }
                 }
                 particle_vec.template ghost_get<PARTICLE_ID,FLUID_MASS,DENSITY,PRESSURE,VELOCITY, DENSITY_OLD, VELOCITY_OLD, D_RHO, D_V, REAL_ID>();
                 particle_vec.map();
